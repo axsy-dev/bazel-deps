@@ -88,7 +88,7 @@ object Writer {
             s"""# duplicates in ${coord.unversioned.asString} $status\n""" +
               vs.filterNot(e => replaced(e.source)).map { e =>
                 s"""# - ${e.source.asString} wanted version ${e.destination.version.asString}\n"""
-              }.mkString("")
+              }.toSeq.sorted.mkString("")
           case None =>
             ""
         }
@@ -96,11 +96,11 @@ object Writer {
         val actual = Label.externalJar(l, coord.unversioned, prefix)
         def kv(key: String, value: String): String =
           s""""$key": "$value""""
-        List(s"""$comment    callback({${kv("artifact", coord.asString)}""",
+        List(s"""$comment    {${kv("artifact", coord.asString)}""",
              s"""${kv("lang", l.asString)}$shaStr$serverStr""",
              s"""${kv("name", coord.unversioned.toBazelRepoName(prefix))}""",
              s"""${kv("actual", actual.asStringFrom(Path(Nil)))}""",
-             s"""${kv("bind", coord.unversioned.toBindingName(prefix))}})""").mkString(", ")
+             s"""${kv("bind", coord.unversioned.toBindingName(prefix))}},""").mkString(", ")
       }
       .mkString("\n")
     s"""# Do not edit. bazel-deps autogenerates this file from ${depsFile}.
@@ -117,8 +117,14 @@ object Writer {
         |        actual = hash["actual"]
         |    )
         |
-        |def maven_dependencies(callback = declare_maven):
+        |def list_dependencies():
+        |    return [
         |$lines
+        |    ]
+        |
+        |def maven_dependencies(callback = declare_maven):
+        |    for hash in list_dependencies():
+        |        callback(hash)
         |""".stripMargin
   }
 
@@ -186,6 +192,7 @@ object Writer {
     if (badExports.nonEmpty) Left(badExports.toList.map(_.unversioned))
     else {
       val rootName = model.getOptions.getThirdPartyDirectory
+      val licenses = model.getOptions.getLicenses
       val pathInRoot = rootName.parts
 
       val langFn = language(g, model)
@@ -242,7 +249,8 @@ object Writer {
               exports = (exports + lab) ++ uvexports,
               jars = Set.empty,
               runtimeDeps = runtime_deps -- uvexports,
-              processorClasses = getProcessorClasses(u))
+              processorClasses = getProcessorClasses(u),
+              licenses = licenses)
           case _: Language.Scala =>
             Target(lang,
               kind = Target.Import,
@@ -250,7 +258,8 @@ object Writer {
               exports = exports ++ uvexports,
               jars = Set(lab),
               runtimeDeps = runtime_deps -- uvexports,
-              processorClasses = getProcessorClasses(u))
+              processorClasses = getProcessorClasses(u),
+              licenses = licenses)
         }
 
 

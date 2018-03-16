@@ -115,7 +115,7 @@ In the options we set:
 * buildHeader: usually you will want to configure your scala support here:
 ```
   buildHeader:
-    - load("@io_bazel_rules_scala//scala:scala.bzl", "scala_library")
+    - load("@io_bazel_rules_scala//scala:scala_import.bzl", "scala_import")
 ```
 * languages: java and scala
 * thirdPartyDirectory: path to where we write the BUILD files for thirdparty. The default is `3rdparty/jvm`.
@@ -127,6 +127,8 @@ In the options we set:
   output_base`)
 * namePrefix: a string added to the generated workspace names, to avoid conflicts.  The external repository names and
   binding targets of each dependency are prefixed.
+* licenses: a set of strings added a licenses rule to each generated bazel target.  Required by
+  bazel if your build targets are under third_party/
 
 In the default case, with no options given, we use:
 - `highest` versionConflictPolicy
